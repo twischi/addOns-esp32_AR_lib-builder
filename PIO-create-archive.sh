@@ -19,7 +19,7 @@
 #      $AR_OWN_OUT      = Folder with the build output
 #      $IDF_PATH        = Folder with the IDF-Components
 #      $BUILD_TYPE      = Type of build (all, lib, core) used with build.sh
-#      $SH_ROOT         = Root Folder lib builder >> esp32-arduino-lib-builder
+#      $LIB_BUILD       = Root Folder lib builder >> esp32-arduino-lib-builder
 # --------------------------------------------------------------------------------
 clear
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -27,10 +27,10 @@ echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Get variables 
 # -----------------------------------------
 # ... Base Folder Structure
-SH_ROOT=$(realpath "$(pwd)")           # Root-Folder of the lib builder
-oneUpDir=$(realpath "$(pwd)"/../)      # DIR above the lib builder
-echo oneUpDir: $oneUpDir
-echo SH_ROOT: $SH_ROOT
+LIB_BUILD=$(realpath "$(pwd)")         # Root-Folder of Lib-builder
+oneUpDir=$(realpath "$(pwd)"/../)      # DIR above the Lib-builder
+echo "oneUpDir: "    $oneUpDir
+echo LIB_BUILD:      $LIB_BUILD
 # ... Load the varialbes and functions for pretty output
 source $oneUpDir/addOns-esp32_AR_lib-builder//myToolsEnhancements.sh
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -42,7 +42,8 @@ mkdir -p "$PIO_Out_DIR"                # Make sure Folder exists
 AR_OUT=$(realpath "$(pwd)"/out)        # Folder with the build output
 echo -n AR_OUT: $AR_OUT  && [ -d "$AR_OUT" ] && echo " (FOUND)" || echo " (NOT FOUND)"
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-#... Folder to arduino-esp32 -Components
+
+#... Folder to arduino-esp32 -Components // https://github.com/espressif/arduino-esp32
 AR_PATH=$(realpath "$(pwd)"/components/arduino)  # Folder with Arduino-Components
 echo "AR_PATH:    "$AR_PATH
 #... Repositories (from remote urls)
@@ -52,22 +53,39 @@ AR_BRANCH=$(git -C "$AR_PATH" branch --show-current --quiet)
 echo "AR_BRANCH:  "$AR_BRANCH
 AR_Commit_short=$(git -C "$AR_PATH" rev-parse --short HEAD || echo "") # Short commit hash of the 'arduino-esp32'
 echo "AR_COMMIT:  "$AR_Commit_short "(short)"
+AR_Tag_closest=$(git -C "$AR_PATH" describe --tags --abbrev=0 $AR_Commit_short || echo "") # Get closest tag from commit hash
+echo "AR_TAG:     "$AR_Tag_closest
+AR_API="https://api.github.com/repos/"$AR_REPO"/releases/tags/"$AR_Tag_closest
 AR_VERSION=$(jq -c '.version' "$AR_PATH/package.json" | tr -d '"')     # Version of the 'arduino-esp32'
 echo "AR_VERSION: "$AR_VERSION
 echo "......................................................................................"
-#... Folder to the IDF-Components
+
+#... Folder to the IDF-Components  // https://github.com/espressif/esp-idf
 IDF_PATH=$(realpath "$(pwd)"/esp-idf) # Folder with the IDF-Components
 echo "IDF_PATH:   "$IDF_PATH
 #... Repositories (from remote urls)
 IDF_REPO=$(git -C $IDF_PATH remote get-url origin | sed -E 's#https?://[^/]+/([^/]+/[^.]+)\.git#\1#')
 echo "IDF_REPO:   "$IDF_REPO
-IDF_BRANCH=$(git -C "$IDF_PATH" branch --show-current --quiet)
-echo "IDF_BRANCH: "$IDF_BRANCH
+#IDF_BRANCH=$(git -C "$IDF_PATH" branch --show-current --quiet)
+#echo "IDF_BRANCH: "$IDF_BRANCH
+IDF_Commit_short=$(git -C "$IDF_PATH" rev-parse --short HEAD || echo "")    # Get Short commit hash of the 'esp-idf'
+echo "IDF_COMMIT: "$IDF_Commit_short "(short)"
+IDF_Tag_closest=$(git -C "$IDF_PATH" describe --tags --abbrev=0 $IDF_Commit_short || echo "") # Get closest tag of the 'esp-idf'
+echo "IDF_TAG:    "$IDF_Tag_closest
+IDF_API="https://api.github.com/repos/"$IDF_REPO"/releases/tags/"$IDF_Tag_closest
+echo "IDF_API:    "$IDF_API
+IDF_DL_URL=$(curl -s $IDF_API | jq -r '.assets[].browser_download_url')
+echo "IDF_DL_URL: "$IDF_DL_URL
+IDF_DL_NAME=$(curl -s $IDF_API| jq -r '.assets[].name') 
+echo "IDF_DL_FN:  "$IDF_DL_NAME
+IDF_DL_TAG=$(curl -s $IDF_API | jq -r '.tag_name') 
+#echo "IDF_TAG: "$IDF_DL_TAG
+
 #... Versions of the used components
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-pioIDF_verStr="IDF_$IDF_BRANCH"
+pioIDF_verStr="IDF_$IDF_DL_TAG"
 echo "pioIDF_verStr: $pioIDF_verStr"
-pioAR_verStr="AR_$AR_BRANCH"
+pioAR_verStr="AR_$AR_VERSION"
 echo "pioAR_verStr:  $pioAR_verStr"
 #... Create list of targets used for the build
 searchFolder="$AR_OUT"/tools/esp32-arduino-libs # Folder with the build output
@@ -134,11 +152,10 @@ cp -f "$AR_PATH"/CMakeLists.txt "$OUT_PIO" # CMakeLists.txt    from 'arduino-esp
 cp -rf "$AR_PATH"/idf_* "$OUT_PIO"         # idf.py            from 'arduino-esp32'  -IDF Components (GitSource)
 cp -f "$AR_PATH"/Kconfig.projbuild "$OUT_PIO" # Kconfig.projbuild from 'arduino-esp32'  -IDF Components (GitSource)
 #----------------------------------- 
-# PIO CREATE NEW file: cores/esp32/              # core_version.h    from 'arduino-esp32' & 'esp-idf'  -IDF Components (GitSource)
+# PIO CREATE NEW file: cores/esp32/        # core_version.h    from 'arduino-esp32' & 'esp-idf'  -IDF Components (GitSource)
 #----------------------------------- 
 # Get needed Info's for this file
 AR_VERSION_UNDERSCORE=$(echo "$AR_VERSION" | tr . _)                         # Replace dots with underscores
-IDF_Commit_short=$(git -C "$IDF_PATH" rev-parse --short HEAD || echo "")     # Short commit hash of the 'esp-idf'
 #echo -e "AR_VERSION_UNDERSCORE: $AR_VERSION_UNDERSCORE"
 #------------------------------------------
 # PIO create/write the core_version.h file
@@ -156,10 +173,10 @@ EOL
 #--------------------------------------------- 
 echo -e " c) Add PIO framework manifest (creating...)"
 echo -e "    ...to: $(shortFP "$OUT_PIO"/)$eTG"package.json"$eNO" 
-if [ "$BUILD_TYPE" = "all" ]; then
-    python3 $SH_ROOT/tools/PIO-gen_frmwk_manifest.py -o "$OUT_PIO/" -s "v$AR_VERSION" -c "$IDF_COMMIT"
-    if [ $? -ne 0 ]; then exit 1; fi
-fi
+ibr=$(git -C "$IDF_PATH" describe --all 2>/dev/null) # echo "ibr: $ibr"
+python3 $LIB_BUILD/tools/gen_platformio_manifest.py -o "$OUT_PIO/" -s "$ibr" -c "$IDF_Commit_short"
+if [ $? -ne 0 ]; then exit 1; fi
+# echo "v$AR_VERSION"  "$IDF_Commit_short"
 # -----------------------------------------------------
 # PIO generate release-info that will be added archive
 # -----------------------------------------------------
@@ -213,7 +230,7 @@ rm -f "$pioArchFP"       # Remove potential old file
 mkdir -p "$OUT_PIO_Release" # Make sure Folder exists
 #          <target>    <source> in currtent dir 
 tar -zcf "$pioArchFP" framework-arduinoespressif32/
-cd $SH_ROOT             # Step back to script-Folder
+cd $LIB_BUILD            # Step back to Lib-Builder-Folder
 # ---------------------------------------------
 # Export Release-Info to be used for git upload
 # ---------------------------------------------
@@ -278,7 +295,8 @@ rlVersionPkg="$(date +"%Y.%m.%d")"
 
 # <esp-idf> - Used for the build:
 rlIDF="$pioIDF_verStr"
-rlIdfTag="$IDF_TAG"
+rlIdfTag="$IDF_Tag_closest"
+# Release-Download https://github.com/espressif/esp-idf/releases/
 
 # <arduino-esp32> - Used for the build:
 rlAR="$pioAR_verStr"
@@ -296,7 +314,6 @@ chmod +x "$OUT_PIO_Release"/pio-release-info.sh
 # Display CREATED OUTPUT Message
 #--------------------------------------------
 read -r -d 'XXX' textToOutput <<EOL
-
 --------------------------------------------
 PIO <framework-arduinoespressif32> CREATED  
 --------------------------------------------
