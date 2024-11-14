@@ -4,7 +4,7 @@ This repository holds **Add-on's** used with **my variant** [`twischi/esp32-ardu
 
 | Add-on-Script  | Description &nbsp;&nbsp;|
 |:------------ | :--------------------------------------------------|
-| ```bashpostBuild_AggregatedFolders.sh``` | Aggregates the folders of the **common**-location created by ```esp32-arduino-lib-builder``` **new lacation** |
+| ```postBuild_AggregatedFolders.sh``` | Aggregates the folders of the **common**-location created by ```esp32-arduino-lib-builder``` **new lacation** |
 | ```PIO-create-archive.sh``` | tbd.|
 
 ### Script: `postBuild_AggregatedFolders.sh`
