@@ -23,29 +23,34 @@ create_symlink() {
     mkdir -p "$target_PATH" # Target-Folder (no effect if it already exists)
     # Check if Standard-Folder is a SYMLINK?
     # >> Will be the CASE when this script has been CALLED BEFORE
-    if [ ! -L "$std_PATH" ]; then
-        # NOT a symlink yet
+    if [ ! -L "$std_PATH" ]; then # ask for "NOT a symlink"?
+        
+        # NOT NOT NOT a symlink yet
         echo "SYMLINK NOT existing yet @Standard-Folder= $std_PATH"
-        echo "... Check if Standard-Folder exists?"        
+        echo "... Check if Standard-Folder exists?"
+        
         # Is the Standard-Folder existing?
-        if [ -d "$std_PATH" ]; then
-            # Standard-Folder exists
+        if [ -d "$std_PATH" ]; then # ask "Is Path a directory"?
+            # YES it is a directory & exists
             echo "... Standard-Folder EXISTS, cleanup needed"
+            
             # >> MOVE the content of the Standard-Folder to the Target-Folder
             echo "... Move his (potential) content to Target-Folder= $target_PATH"
             mv -f "$std_PATH"/{.,}* "$target_PATH"/ # Include hidden files & folders
+            
             # >> Delete the (now empty) Standard-Folder to be able to create a symlink
             echo "... Then delete the existing Standard-Folder=$std_PATH"
             rm -rf "$std_PATH"
         else 
-            # Standard-Folder does not exist
+            # NO Standard-Folder does not exist
             echo "... Standard-Folder NOT EXISTS --> Symlink will be created directly"
-            # It 
         fi
-        # >> Create a symlink
-        # to this  <Target>    at    <link_name(Folder)> new Folder that's symlinked
+
+        # >> CREATE the symlink
         echo "... Create a symlink at Standard-Folder"
+        # to this  <Target>    at    <link_name(Folder)> new Folder that's symlinked
         ln -s   "$target_PATH"       "$std_PATH" > /dev/null
+    
     else
         # Symlink already EXIST
         echo "SIMLINK already EXITS @Standard-Folder --> NO action needed" && echo
@@ -78,7 +83,7 @@ process_GH_Folder() {
     # Set OWN arduino-esp32-BUILD Output Folder location
     # ---------------------------------------------------
     std_PATH="$PWD"/out                           # Standard-Folder in Scope
-    target_PATH="$oneUpDir"/"OUT-from_build"      # Target-Folder in Scope
+    target_PATH="$oneUpDir""/OUT-from_build"      # Target-Folder in Scope
     create_symlink # Call the function
     # ---------------------------------------------------
     # Set OWN arduino-esp32-BUILD Distribution Folder
