@@ -1,6 +1,6 @@
 #!/bin/bash
 # --------------------------------------------------------------------------------
-# PIO create archive from build output for release
+# PIO create archive 
 # --------------------------------------------------------------------------------
 # The purpose of this script is to create a 'framework-arduinoespressif32' archive
 # from the build output of the 'esp32-arduino-lib-builder' for release.
@@ -13,16 +13,17 @@
 #                                         to be used for release on Github
 #                        e.g. at https://github.com/twischi/platform-espressif32
 #
-# .... It used the given following variables (in order of appearance):
-# INPUT
-#      $ArduionoCOMPS   = Folder with Arduino-Components
-#      $AR_OWN_OUT      = Folder with the build output
-#      $IDF_PATH        = Folder with the IDF-Components
-#      $BUILD_TYPE      = Type of build (all, lib, core) used with build.sh
-#      $LIB_BUILD       = Root Folder lib builder >> esp32-arduino-lib-builder
-# --------------------------------------------------------------------------------
+# --- Introduce 'dryrun'-option (2024-11-15)
+#     Call this script with 'dryrun' as argument for TESTING
+# --------------------------------------------------------------------------------  
 clear
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+# ---------------------------------------------------------
+# Check if the script is called with 'dryrun' as argument
+# -> Set and export flag 'dryrun'
+# ---------------------------------------------------------
+[ "$1" == "dryrun" ] && echo -e "--- DRY-RUN MODE ---\n"  || NdR=1 # Set flag for dry-run
+# $NdR Set = Dry-run- // Unset = Real run >> [ $NdR ] && COMMEAND
 # -----------------------------------------
 # Get variables 
 # -----------------------------------------
@@ -37,15 +38,14 @@ echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #... Root-Folder for PIO framework outputs
 PIO_Out_DIR=$oneUpDir/PIO-Out 
 echo -n PIO_Out_DIR: $PIO_Out_DIR && [ -d "$PIO_Out_DIR" ] && echo " (FOUND)" || echo " (CREATED)"
-mkdir -p "$PIO_Out_DIR"                # Make sure Folder exists
+[ $NdR ] && mkdir -p "$PIO_Out_DIR" # Make sure Folder exists
 #... AR_OUT = Folder with the build output
-AR_OUT=$(realpath "$(pwd)"/out)        # Folder with the build output
+AR_OUT=$(realpath "$(pwd)"/out)         # Folder with the build output
 echo -n AR_OUT: $AR_OUT  && [ -d "$AR_OUT" ] && echo " (FOUND)" || echo " (NOT FOUND)"
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-
 #... Folder to arduino-esp32 -Components // https://github.com/espressif/arduino-esp32
 AR_PATH=$(realpath "$(pwd)"/components/arduino)  # Folder with Arduino-Components
-echo "AR_PATH:    "$AR_PATH
+echo -e "AR_PATH:    "$(shortFP $AR_PATH)
 #... Repositories (from remote urls)
 AR_REPO=$(git -C $AR_PATH remote get-url origin | sed -E 's#https?://[^/]+/([^/]+/[^.]+)\.git#\1#')
 echo "AR_REPO:    "$AR_REPO
@@ -62,7 +62,7 @@ echo "..........................................................................
 
 #... Folder to the IDF-Components  // https://github.com/espressif/esp-idf
 IDF_PATH=$(realpath "$(pwd)"/esp-idf) # Folder with the IDF-Components
-echo "IDF_PATH:   "$IDF_PATH
+echo -e "IDF_PATH:   "$(shortFP $IDF_PATH)
 #... Repositories (from remote urls)
 IDF_REPO=$(git -C $IDF_PATH remote get-url origin | sed -E 's#https?://[^/]+/([^/]+/[^.]+)\.git#\1#')
 echo "IDF_REPO:   "$IDF_REPO
@@ -80,6 +80,11 @@ IDF_DL_NAME=$(curl -s $IDF_API| jq -r '.assets[].name')
 echo "IDF_DL_FN:  "$IDF_DL_NAME
 IDF_DL_TAG=$(curl -s $IDF_API | jq -r '.tag_name') 
 #echo "IDF_TAG: "$IDF_DL_TAG
+echo "......................................................................................"
+
+#... Branch of Lib-Builder
+LB_BRANCH=$(git rev-parse --abbrev-ref HEAD) # Get current branch of used esp32-arduiono-lib-builder
+echo "LB_BRANCH:  "$LB_BRANCH "(esp32-arduino-lib-builder)"
 
 #... Versions of the used components
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -103,11 +108,21 @@ echo "--------------------------------------------------------------------------
 # -----------------------------------------
 # PIO Framework Folder = from build output 
 # -----------------------------------------
-OUT_PIO=$PIO_Out_DIR/framework-arduinoespressif32
-[ -d "$OUT_PIO" ] && rm -rf "$OUT_PIO" # Remove old folder if exists
-mkdir -p dist "$OUT_PIO"               # Make sure Folder exists
-OUT_PIO_Release=$PIO_Out_DIR/forRelease
+# Folder Name for this release                   (e.g. 2024-11-15_IDF_v5.3.1-AR_3.1.0_esp32h2)
+releaseMainFN=$(date +"%Y-%m-%d")"_"$pioIDF_verStr"-"$pioAR_verStr"_"$TargetsHyphenSep
+OUT_PIO=$PIO_Out_DIR"/"$releaseMainFN"/framework-arduinoespressif32"
+#echo "OUT_PIO: $OUT_PIO" && exit  
+[ -d "$OUT_PIO" ] && [ $NdR ] && rm -rf "$OUT_PIO"   # Remove old folder if exists
+[ $NdR ] && mkdir -p dist "$OUT_PIO"             # Make sure Folder exists
+OUT_PIO_Release=$PIO_Out_DIR"/"$releaseMainFN"/forRelease"
+if [ ! $NdR ]; then
+  echo -e "OUT_PIO:         "$(shortFP $OUT_PIO)
+  echo -e "OUT_PIO_Release: "$(shortFP $OUT_PIO_Release)
+fi
 # echo "ArduionoCOMPS: $ArduionoCOMPS"
+if [ ! $NdR ]; then
+    echo "END OF dryrun = STOPPED HERE"; exit 0
+fi
 #-----------------------------------------
 # Message: Start Creating content
 #-----------------------------------------
@@ -121,14 +136,14 @@ echo -e "    ...in: $(shortFP "$OUT_PIO")"
 # PIO COPY 'cores/esp32' - FOLDER
 #-----------------------------------------
 mkdir -p "$OUT_PIO"/cores/esp32
-cp -rf "$AR_PATH"/cores "$OUT_PIO"       # cores-Folder      from 'arduino-esp32'  -IDF Components (GitSource)
+cp -rf "$AR_PATH"/cores "$OUT_PIO" # cores-Folder      from 'arduino-esp32'  -IDF Components (GitSource)
 #-----------------------------------------
 # PIO COPY 'tools' - FOLDER
 #-----------------------------------------
 mkdir -p "$OUT_PIO"/tools/partitions
-cp -rf "$AR_PATH"/tools "$OUT_PIO"       # tools-Folder      from 'arduino-esp32'  -IDF Components (GitSource)
+cp -rf "$AR_PATH"/tools "$OUT_PIO" # tools-Folder      from 'arduino-esp32'  -IDF Components (GitSource)
 #   Remove *.exe files as they are not needed
-    rm -f "$OUT_PIO"/tools/*.exe               # *.exe in Tools-Folder >> remove 
+    rm -f "$OUT_PIO"/tools/*.exe   # *.exe in Tools-Folder >> remove 
 cp -rf out/tools/esp32-arduino-libs "$OUT_PIO"/tools/  # from 'esp32-arduino-libs'       (BUILD output-libs)
 #--------------------------------------------- 
 # PIO modify .../tools//platformio-build.py 
@@ -140,7 +155,7 @@ sed -i '' "/^$searchLineBy/s/.*/$replaceLine/" "$OUT_PIO"/tools/platformio-build
 #-----------------------------------------
 # PIO COPY 'libraries' - FOLDER
 #-----------------------------------------
-cp -rf "$AR_PATH"/libraries "$OUT_PIO"     # libraries-Folder  from 'arduino-esp32'  -IDF Components (GitSource)
+cp -rf "$AR_PATH"/libraries "$OUT_PIO" # libraries-Folder  from 'arduino-esp32'  -IDF Components (GitSource)
 #-----------------------------------------
 # PIO COPY 'variants' - FOLDER
 #-----------------------------------------
@@ -180,7 +195,6 @@ if [ $? -ne 0 ]; then exit 1; fi
 # -----------------------------------------------------
 # PIO generate release-info that will be added archive
 # -----------------------------------------------------
-GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD) # Get current branch of used esp32-arduiono-lib-builder
 echo -e " d) Creating release-info.txt used for publishing (creating...)"
 echo -e "    ...to: $(shortFP $OUT_PIO/)$eTG"release-info.txt"$eNO" 
 cat <<EOL > $OUT_PIO/release-info.txt
@@ -200,13 +214,13 @@ Framework built from resources:
 
 build with:
 -- esp32-arduino-lib-builder
-   * branch [$GIT_BRANCH]
+   * branch [$LB_BRANCH]
      https://github.com/twischi/esp32-arduino-lib-builder.git
 
 Build for this targets:
    $TargetsHyphenSep
 EOL
-#cat "$OUT_PIO"/release-info.txt
+# cat "$OUT_PIO"/release-info.txt
 #-----------------------------------------
 # Message create archive
 #-----------------------------------------
@@ -225,8 +239,8 @@ pioArchFP="$OUT_PIO_Release/$pioArchFN"            # Full path of the archive
 # ---------------------------------------------
 # Create the Archive with tar
 # ---------------------------------------------
-cd $OUT_PIO/..           # Step to source-Folder
-rm -f "$pioArchFP"       # Remove potential old file
+cd $OUT_PIO/..              # Step to source-Folder
+rm -f "$pioArchFP"          # Remove potential old file
 mkdir -p "$OUT_PIO_Release" # Make sure Folder exists
 #          <target>    <source> in currtent dir 
 tar -zcf "$pioArchFP" framework-arduinoespressif32/
@@ -297,6 +311,8 @@ rlVersionPkg="$(date +"%Y.%m.%d")"
 rlIDF="$pioIDF_verStr"
 rlIdfTag="$IDF_Tag_closest"
 # Release-Download https://github.com/espressif/esp-idf/releases/
+rlIDF_DL_URL="$IDF_DL_URL"
+rlIDF_DL_FN="$IDF_DL_NAME"
 
 # <arduino-esp32> - Used for the build:
 rlAR="$pioAR_verStr"
