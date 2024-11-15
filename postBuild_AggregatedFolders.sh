@@ -11,12 +11,42 @@
 # 2) Set OWN arduino-esp32-BUILD Output Folder location
 # -------------------------------------------------
 
+#---------------------------------------
+# Define the colors for the echo output
+#---------------------------------------
+export ePF="\x1B[35m"   # echo Color (Purple) for Path and File outputs
+export eGI="\x1B[32m"   # echo Color (Green) for Git-Urls
+export eTG="\x1B[31m"   # echo Color (Red) for Targets
+export eSR="\x1B[9;31m" # echo Color (Strikethrough in Red) for Skipped Targets
+export eUS="\x1B[34m"   # echo Color (blue) for Files that are executed or used 
+export eNO="\x1B[0m"    # Back to    (Black)
+
+clear
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+echo "* Creates a NEW folder-structure"
+echo "* Use it with symlink's from original structure in esp32-arduino-lib-builder-Folder."
+echo
+echo -e "* 1) Moves all GitHub-Downloads to ONE folder: $ePF./../GitHub-Sources"$eNO
+echo -e "* 2) Moves arduino-esp32-BUILD Output to:      $ePF./../OUT-from_build"$eNO
+echo 
+#echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+#-------------------------------------------------------------------------------
+# Function to shorten the File-Pathes for put buy remove parts
+# usage: echo -e "$(shortFP "/Users/thomas/JOINED/esp32-arduino-lib-builder/out/tools")
+#-------------------------------------------------------------------------------
+shortFP() {   
+    local filePathLong="$1"
+    local removePart="$(realpath $(pwd)/../)/" # DIR above the current directory
+    local filePathShort=$(echo "$filePathLong" | sed "s|$removePart||")     
+    echo "$eTG$filePathShort$eNO"
+}
 # ---------------------------------------
 # FUNCTIONS to Create SYMLINK for Folders
 # >> used below! 
 # ---------------------------------------
 create_symlink() {
-    echo "~~~~~~~~~~~~~~~~~~ Create Symlink if needed ~~~~~~~~~~~~~~~~~~" 
+    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Create Symlink ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+    echo -e "for: $(shortFP $std_PATH)"
     echo "Standard-PATH: $std_PATH"
     echo "Target  -PATH: $target_PATH"
     echo "---"
@@ -36,7 +66,7 @@ create_symlink() {
             
             # >> MOVE the content of the Standard-Folder to the Target-Folder
             echo "... Move his (potential) content to Target-Folder= $target_PATH"
-            mv -f "$std_PATH"/{.,}* "$target_PATH"/ # Include hidden files & folders
+            mv -f "$std_PATH"/{.}* "$target_PATH"/ # Include hidden files & folders
             
             # >> Delete the (now empty) Standard-Folder to be able to create a symlink
             echo "... Then delete the existing Standard-Folder=$std_PATH"
@@ -56,14 +86,12 @@ create_symlink() {
         echo "SIMLINK already EXITS @Standard-Folder --> NO action needed" && echo
     fi
 }
-
 # ------------------------------------------------------------------
 # Move directories that has a GitHub sources to ONE a common folder
 # ------------------------------------------------------------------
 # Affects GitHub Download for 
 # - arduino-esp32 / /- esp-idf / - esp32-arduino-libs
 process_GH_Folder() {
-    #clear
     local oneUpDir=$(realpath $(pwd)/../)  # Find directory above the current one
     GitHubSources=$oneUpDir/GitHub-Sources # GitHub-Sources-Folder
     mkdir -p "$GitHubSources"              # if not exists create the Target-Folder
@@ -125,20 +153,5 @@ extractFileName() {
     echo "$result"
 }
 
-# Function to shorten the File-Pathes for put buy remove parts
-# usage: echo -e "$(shortFP "/Users/thomas/JOINED/esp32-arduino-lib-builder/out/tools")
-shortFP() {   
-    local filePathLong="$1"
-    local removePart="$(realpath $(pwd)/../)/" # DIR above the current directory
-    local filePathShort=$(echo "$filePathLong" | sed "s|$removePart||")     
-    echo "$ePF$filePathShort$eNO"
-}
-echo "myTools & Enhancements > Variables & Functions loaded successfully."
-
 # echo "Press Enter to continue..." && read
-
-# Option '-G' : Save all downloads from GitHub in ONE folder, affect
-# - arduino-esp32 / /- esp-idf / - esp32-arduino-libs
 process_GH_Folder
-# Option '-o' : Set OWN arduino-esp32-BUILD Output Folder location
-#process_OWN_OutFolder_AR
