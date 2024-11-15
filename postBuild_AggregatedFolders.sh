@@ -66,8 +66,7 @@ create_symlink() {
             
             # >> MOVE the content of the Standard-Folder to the Target-Folder
             echo "... Move his (potential) content to Target-Folder= $target_PATH"
-            mv -f "$std_PATH"/{.}* "$target_PATH"/ # Include hidden files & folders
-            
+            mv -f $std_PATH/{*,.[!.]*} $target_PATH # Move all including hidden files & folders
             # >> Delete the (now empty) Standard-Folder to be able to create a symlink
             echo "... Then delete the existing Standard-Folder=$std_PATH"
             rm -rf "$std_PATH"
