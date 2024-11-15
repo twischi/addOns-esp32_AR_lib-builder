@@ -16,6 +16,12 @@
 # --- Introduce 'dryrun'-option (2024-11-15)
 #     Call this script with 'dryrun' as argument for TESTING
 # --------------------------------------------------------------------------------  
+
+# --------------------------------------------------------------------------------
+# Read (YOUR) configuration: Gets userGH & tokenGH, needed for GitHub authentication
+# --------------------------------------------------------------------------------
+source config/config.sh # Used for API calls
+
 clear
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 # ---------------------------------------------------------
@@ -74,11 +80,11 @@ IDF_Tag_closest=$(git -C "$IDF_PATH" describe --tags --abbrev=0 $IDF_Commit_shor
 echo "IDF_TAG:    "$IDF_Tag_closest
 IDF_API="https://api.github.com/repos/"$IDF_REPO"/releases/tags/"$IDF_Tag_closest
 echo "IDF_API:    "$IDF_API
-IDF_DL_URL=$(curl -s $IDF_API | jq -r '.assets[].browser_download_url')
+IDF_DL_URL=$(curl -su $userGH:$tokenGH $IDF_API | jq -r '.assets[].browser_download_url')
 echo "IDF_DL_URL: "$IDF_DL_URL
-IDF_DL_NAME=$(curl -s $IDF_API| jq -r '.assets[].name') 
+IDF_DL_NAME=$(curl -su $userGH:$tokenGH $IDF_API| jq -r '.assets[].name') 
 echo "IDF_DL_FN:  "$IDF_DL_NAME
-IDF_DL_TAG=$(curl -s $IDF_API | jq -r '.tag_name') 
+IDF_DL_TAG=$(curl -su $userGH:$tokenGH $IDF_API | jq -r '.tag_name') 
 #echo "IDF_TAG: "$IDF_DL_TAG
 echo "......................................................................................"
 

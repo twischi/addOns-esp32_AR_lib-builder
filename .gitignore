@@ -1,3 +1,4 @@
 .DS_Store
 .vscode
 addOns-esp32_AR_lib-builder-backup
+config/.gitHubToken
