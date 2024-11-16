@@ -44,6 +44,6 @@ shortFP() {
     local filePathLong="$1"
     local removePart="$(realpath $(pwd)/../)/" # DIR above the current directory
     local filePathShort=$(echo "$filePathLong" | sed "s|$removePart||")     
-    echo "$ePF$filePathShort$eNO"
+    echo "$eUS$filePathShort$eNO"
 }
 echo ">> myTools & Enhancements > Variables & Functions LOADED."

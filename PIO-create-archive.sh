@@ -64,7 +64,7 @@ echo "AR_TAG:     "$AR_Tag_closest
 AR_API="https://api.github.com/repos/"$AR_REPO"/releases/tags/"$AR_Tag_closest
 AR_VERSION=$(jq -c '.version' "$AR_PATH/package.json" | tr -d '"')     # Version of the 'arduino-esp32'
 echo "AR_VERSION: "$AR_VERSION
-echo "......................................................................................"
+echo "....................................................................................."
 
 #... Folder to the IDF-Components  // https://github.com/espressif/esp-idf
 IDF_PATH=$(realpath "$(pwd)"/esp-idf) # Folder with the IDF-Components
@@ -86,7 +86,7 @@ IDF_DL_NAME=$(curl -su $userGH:$tokenGH $IDF_API| jq -r '.assets[].name')
 echo "IDF_DL_FN:  "$IDF_DL_NAME
 IDF_DL_TAG=$(curl -su $userGH:$tokenGH $IDF_API | jq -r '.tag_name') 
 #echo "IDF_TAG: "$IDF_DL_TAG
-echo "......................................................................................"
+echo "....................................................................................."
 
 #... Branch of Lib-Builder
 LB_BRANCH=$(git rev-parse --abbrev-ref HEAD) # Get current branch of used esp32-arduiono-lib-builder
@@ -126,6 +126,51 @@ if [ ! $NdR ]; then
   echo -e "OUT_PIO_Release: "$(shortFP $OUT_PIO_Release)
 fi
 # echo "ArduionoCOMPS: $ArduionoCOMPS"
+
+#--------------------------------------------- 
+# PIO modify .../tools//platformio-build.py 
+#---------------------------------------------
+echo -e " ...correct 'platformio-build.py' of {target}s"
+# Code block that is wrong and needs to be replaced 
+searchBlock=$(cat <<EOL
+FRAMEWORK_DIR = env.PioPlatform().get_package_dir("framework-arduinoespressif32")
+FRAMEWORK_SDK_DIR = env.PioPlatform().get_package_dir(
+    "framework-arduinoespressif32-libs"
+)
+EOL
+)
+# Correct code block for replacement
+replaceBlock=$(cat <<EOL
+# --------------------------------------------------------------
+# PIO-create-archive.sh has replaced the following 2 lines, because 
+# the code-block in 'esp32-arduino-lib-builder'-tool (LB) 
+#
+# in file:      'pio_start.txt'
+# located at:   ./configs/ 
+# is WRONG!
+# -------------------------------------------------------------
+# LB adds the wrong code of 'pio_start.txt' into 
+# the 'platformio-build.py' of each {target} it build.
+#
+# This is happens when CMake calls 'copy-libs.sh' create/modify  
+# the file:       platformio-build.py 
+# where the wrong code-block end's up.
+#
+#  Hint there is also a 'pio_end.txt', what is correct.
+# --------------------------------------------------------------
+FRAMEWORK_DIR = env.PioPlatform().get_package_dir("framework-arduinoespressif32")
+FRAMEWORK_SDK_DIR = join(FRAMEWORK_DIR, "tools", "esp32-arduino-libs")
+EOL
+)
+# Process files
+find "$searchFolder" -type f -name "platformio-build.py" | while read -r file; do
+    echo -e "Processing file: $(shortFP $file)"
+    [ $NdR ] && perl -0777 -pi -e "s|\Q$searchBlock\E|$replaceBlock|g" "$file"
+done
+echo "....................................................................................."
+#-----------------------
+# dry-run - STOP HERE
+#-----------------------
 if [ ! $NdR ]; then
     echo "END OF dryrun = STOPPED HERE"; exit 0
 fi
@@ -151,13 +196,6 @@ cp -rf "$AR_PATH"/tools "$OUT_PIO" # tools-Folder      from 'arduino-esp32'  -ID
 #   Remove *.exe files as they are not needed
     rm -f "$OUT_PIO"/tools/*.exe   # *.exe in Tools-Folder >> remove 
 cp -rf out/tools/esp32-arduino-libs "$OUT_PIO"/tools/  # from 'esp32-arduino-libs'       (BUILD output-libs)
-#--------------------------------------------- 
-# PIO modify .../tools//platformio-build.py 
-#---------------------------------------------
-echo -e " ...modfied '/tools//platformio-build.py' for FRAMEWORK_LIBS_DIR"
-searchLineBy='FRAMEWORK_LIBS_DIR ='
- replaceLine='FRAMEWORK_LIBS_DIR = join(FRAMEWORK_DIR, "tools", "esp32-arduino-libs")'
-sed -i '' "/^$searchLineBy/s/.*/$replaceLine/" "$OUT_PIO"/tools/platformio-build.py
 #-----------------------------------------
 # PIO COPY 'libraries' - FOLDER
 #-----------------------------------------
