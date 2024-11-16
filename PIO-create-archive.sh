@@ -17,10 +17,8 @@
 #     Call this script with 'dryrun' as argument for TESTING
 # --------------------------------------------------------------------------------  
 
-# --------------------------------------------------------------------------------
-# Read (YOUR) configuration: Gets userGH & tokenGH, needed for GitHub authentication
-# --------------------------------------------------------------------------------
-source config/config.sh # Used for API calls
+# FOR DEBUG ONLY
+#cd ~/LB_and_PIO-ORIGINAL/esp32-arduino-lib-builder-Mod_PIO_start
 
 clear
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
@@ -33,17 +31,17 @@ echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # --------------------------------------------------
 # Get many essential infomations and set variables
 # --------------------------------------------------
-
 # ... Base Folder Structure
 LIB_BUILD=$(realpath "$(pwd)")         # Root-Folder of Lib-builder
 oneUpDir=$(realpath "$(pwd)"/../)      # DIR above the Lib-builder
-echo "oneUpDir: "    $oneUpDir
-echo LIB_BUILD:      $LIB_BUILD
-
+ADD_ON_PATH=$oneUpDir/addOns-esp32_AR_lib-builder 
 # ... Load the varialbes and functions for pretty output
-source $oneUpDir/addOns-esp32_AR_lib-builder//myToolsEnhancements.sh
+source $ADD_ON_PATH/myToolsEnhancements.sh
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-
+# Read (YOUR) configuration: Gets userGH & tokenGH, needed for GitHub authentication
+source $ADD_ON_PATH/config/config.sh # Used for API calls
+echo -e "oneUpDir: "    $(shortFP $oneUpDir)
+echo -e LIB_BUILD:      $(shortFP $LIB_BUILD)
 #... Root-Folder for PIO framework outputs
 PIO_Out_DIR=$oneUpDir/PIO-Out 
 echo -n PIO_Out_DIR: $PIO_Out_DIR && [ -d "$PIO_Out_DIR" ] && echo " (FOUND)" || echo " (CREATED)"
@@ -53,11 +51,9 @@ echo -n PIO_Out_DIR: $PIO_Out_DIR && [ -d "$PIO_Out_DIR" ] && echo " (FOUND)" ||
 AR_OUT=$(realpath "$(pwd)"/out)         # Folder with the build output
 echo -n AR_OUT: $AR_OUT  && [ -d "$AR_OUT" ] && echo " (FOUND)" || echo " (NOT FOUND)"
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-
 #... Folder to arduino-esp32 -Components // https://github.com/espressif/arduino-esp32
 AR_PATH=$(realpath "$(pwd)"/components/arduino)  # Folder with Arduino-Components
 echo -e "AR_PATH:    "$(shortFP $AR_PATH)
-
 #... Repositories (from remote urls)
 AR_REPO=$(git -C $AR_PATH remote get-url origin | sed -E 's#https?://[^/]+/([^/]+/[^.]+)\.git#\1#')
 echo "AR_REPO:    "$AR_REPO
@@ -116,16 +112,16 @@ for dir in "$searchFolder"/*/; do                           # Loop to Subfolers
     fi
 done
 echo "4Targets=      "$TargetsHyphenSep
-echo "....................................................................................."
 
 # Folder Name for this release                   (e.g. 2024-11-15_IDF_v5.3.1-AR_3.1.0_esp32h2)
 releaseMainFN=$(date +"%Y-%m-%d")"_"$pioIDF_verStr"-"$pioAR_verStr"_"$TargetsHyphenSep
 PIO_frmwkDIR=$PIO_Out_DIR"/"$releaseMainFN"/framework-arduinoespressif32"
 #echo "PIO_frmwkDIR: $PIO_frmwkDIR" && exit  
 [ -d "$PIO_frmwkDIR" ] && [ $NdR ] && rm -rf "$PIO_frmwkDIR"   # Remove old folder if exists
-[ $NdR ] && mkdir -p dist "$PIO_frmwkDIR"             # Make sure Folder exists
+[ $NdR ] && mkdir -p "$PIO_frmwkDIR"             # Make sure Folder exists
 PIO_RelDIR=$PIO_Out_DIR"/"$releaseMainFN"/forRelease"
 if [ ! $NdR ]; then
+  echo "....................................................................................."
   echo -e "PIO_frmwkDIR:         "$(shortFP $PIO_frmwkDIR)
   echo -e "PIO_RelDIR: "$(shortFP $PIO_RelDIR)
 fi
@@ -142,11 +138,7 @@ echo "--------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------
 # Fill PIO Framework Folders = from 'out' of espressif's 'esp32-arduino-lib-builder'
 # ----------------------------------------------------------------------------------------
-# Correct .../tools/platformio-build.py in ./tools/
-#---------------------------------------------------
-echo -e " ...Correct 'platformio-build.py' in ./tools/"
-# Code block that is wrong and needs to be replaced 
-echo "....................................................................................."
+
 #-----------------------------------------
 # Message: Start Creating content
 #-----------------------------------------
@@ -174,11 +166,65 @@ cp -rf "$AR_PATH"/tools "$PIO_frmwkDIR" # tools-Folder      from 'arduino-esp32'
 #   Remove *.exe files as they are not needed
     rm -f "$PIO_frmwkDIR"/tools/*.exe   # *.exe in Tools-Folder >> remove 
 cp -rf out/tools/esp32-arduino-libs "$PIO_frmwkDIR"/tools/  # from 'esp32-arduino-libs'       (BUILD output-libs)
-#-----------------------------------------
+
+#----------------------------------------------------------------------------------
+# Correct WRONG CODE BLOCK that in .../tools/platformio-build.py 
+# Source espressif's    'arduino-esp32' 
+# in                    .../tools/platformio-build.py
+#----------------------------------------------------------------------------------
+# Wrong code block
+echo -e "    Correct /tools/"$eTG"platformio-build.py"$eNO
+searchBlock=$(cat <<EOL
+FRAMEWORK_DIR = platform.get_package_dir("framework-arduinoespressif32")
+FRAMEWORK_LIBS_DIR = platform.get_package_dir("framework-arduinoespressif32-libs")
+assert isdir(FRAMEWORK_DIR)
+EOL
+)
+# Correct code block for replacement
+replaceBlock=$(cat <<EOL
+FRAMEWORK_DIR = platform.get_package_dir("framework-arduinoespressif32")
+#-------------------------------------------------------------------------------- 
+# Changes from TW @ 2024-11-16
+#-------------------------------------------------------------------------------- 
+# FRAMEWORK_LIBS_DIR
+#-------------------------------------------------------------------------------- 
+# Is later one used way:
+#
+# SConscript(
+#    join(FRAMEWORK_LIBS_DIR, build_mcu, "platformio-build.py"))
+#
+# What is used
+#     to include the 'platformio-build.py' of the cores
+#     'build_mcu' is a placholder for the cores like 'esp32h2'
+#
+# >>> So us have to set the path to where it will be located
+#     inside the package-Folder 'framework-arduinoespressif32'
+#
+# !!! My 
+#      'addOns-esp32_AR_lib-builder' for providing add on's 
+#      to espressif's 'esp32-arduino-lib-builder' 
+#      the script 'PIO-create-archive.sh' stores the files of the cores 
+#      in the folder:
+#      framework-arduinoespressif32 / tools / sdk-4-targets
+#-------------------------------------------------------------------------------- 
+FRAMEWORK_LIBS_DIR = join(FRAMEWORK_DIR, "tools", "sdk-4-targets")
+assert isdir(FRAMEWORK_DIR)
+EOL
+)
+# Process block replacement
+perl -0777 -pi -e "s|\Q$searchBlock\E|$replaceBlock|g" ""$PIO_frmwkDIR"/tools/platformio-build.py"
+
+#----------------------------------------------------------------
+# PIO RENAME 'esp32-arduino-libs' - FOLDER
+# !! <RL>: /framework-arduinoespressif32/tools/esp32-arduino-libs
+# >> <RL>: /framework-arduinoespressif32/tools/sdk-4-targets
+#----------------------------------------------------------------
+mv -f "$PIO_frmwkDIR"/tools/esp32-arduino-libs "$PIO_frmwkDIR"/tools/sdk-4-targets
+#-------------------------------------------------
 # PIO COPY 'libraries' - FOLDER
 #    <LB>: /components/arduino/libraries
 # >> <RL>: /framework-arduinoespressif32/libraries
-#-----------------------------------------
+#-------------------------------------------------
 cp -rf "$AR_PATH"/libraries "$PIO_frmwkDIR" # libraries-Folder  from 'arduino-esp32'  -IDF Components (GitSource)
 #-----------------------------------------
 # PIO COPY 'variants' - FOLDER
@@ -198,6 +244,8 @@ cp -f "$AR_PATH"/Kconfig.projbuild "$PIO_frmwkDIR" # Kconfig.projbuild from 'ard
 # Get needed Info's for this file
 AR_VERSION_UNDERSCORE=$(echo "$AR_VERSION" | tr . _)                         # Replace dots with underscores
 #echo -e "AR_VERSION_UNDERSCORE: $AR_VERSION_UNDERSCORE"
+echo "....................................................................................."
+
 #------------------------------------------
 # PIO create/write the core_version.h file
 #-----------------------------------------
@@ -209,6 +257,8 @@ cat <<EOL > "$PIO_frmwkDIR"/cores/esp32/core_version.h
 #define ARDUINO_ESP32_RELEASE_$AR_VERSION_UNDERSCORE
 #define ARDUINO_ESP32_RELEASE "$AR_VERSION_UNDERSCORE"
 EOL
+echo "....................................................................................."
+
 #---------------------------------------------
 # PIO generate framework manifest file            # package.json      from 'arduino-esp32' & 'esp-idf'  -IDF Components (GitSource)
 #--------------------------------------------- 
@@ -218,6 +268,8 @@ ibr=$(git -C "$IDF_PATH" describe --all 2>/dev/null) # echo "ibr: $ibr"
 python3 $LIB_BUILD/tools/gen_platformio_manifest.py -o "$PIO_frmwkDIR/" -s "$ibr" -c "$IDF_Commit_short"
 if [ $? -ne 0 ]; then exit 1; fi
 # echo "v$AR_VERSION"  "$IDF_Commit_short"
+echo "....................................................................................."
+
 # -----------------------------------------------------
 # PIO generate release-info that will be added archive
 # -----------------------------------------------------
@@ -247,6 +299,8 @@ Build for this targets:
    $TargetsHyphenSep
 EOL
 # cat "$PIO_frmwkDIR"/release-info.txt
+echo "....................................................................................."
+
 #-----------------------------------------
 # Message create archive
 #-----------------------------------------
@@ -271,6 +325,8 @@ mkdir -p "$PIO_RelDIR" # Make sure Folder exists
 #          <target>    <source> in currtent dir 
 tar -zcf "$pioArchFP" framework-arduinoespressif32/
 cd $LIB_BUILD            # Step back to Lib-Builder-Folder
+echo "....................................................................................."
+
 # ---------------------------------------------
 # Export Release-Info to be used for git upload
 # ---------------------------------------------
@@ -313,7 +369,7 @@ EOL
 # ..............................................
 # Release-Info as shell-file to import variables
 # ..............................................
-echo -e "         ...to: $(shortFP "$PIO_RelDIR"/)$eTG"pio-release-info.sh"$eNO"
+echo -e "    ...to: $(shortFP "$PIO_RelDIR"/)$eTG"pio-release-info.sh"$eNO"
 rm -f "$PIO_RelDIR"/pio-release-info.sh  # Remove potential old file
 cat <<EOL > "$PIO_RelDIR"/pio-release-info.sh
 #!/bin/bash
@@ -356,13 +412,12 @@ chmod +x "$PIO_RelDIR"/pio-release-info.sh
 # Display CREATED OUTPUT Message
 #--------------------------------------------
 read -r -d 'XXX' textToOutput <<EOL
---------------------------------------------
+------------------------------------------------------------------------------------
 PIO <framework-arduinoespressif32> CREATED  
---------------------------------------------
+------------------------------------------------------------------------------------
 OUTPUT is placed at:
    ...Files for PIO Framework needs
    $ePF $PIO_frmwkDIR $eNO
-
    ... Perpared for release on Github
    ... e.g. at $eGI https://github.com/twischi/platform-espressif32 $eNO
    $ePF $PIO_RelDIR $eNO
