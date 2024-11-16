@@ -111,9 +111,9 @@ echo "4Targets=      "$TargetsHyphenSep
 echo "===================================================================================="
 echo "                            Create  Stuff for PIO release"
 echo "------------------------------------------------------------------------------------"
-# -----------------------------------------
-# PIO Framework Folder = from build output 
-# -----------------------------------------
+# -----------------------------------------------
+# Fill PIO Framework Folders = from build output 
+# ----------------------------------------------
 # Folder Name for this release                   (e.g. 2024-11-15_IDF_v5.3.1-AR_3.1.0_esp32h2)
 releaseMainFN=$(date +"%Y-%m-%d")"_"$pioIDF_verStr"-"$pioAR_verStr"_"$TargetsHyphenSep
 OUT_PIO=$PIO_Out_DIR"/"$releaseMainFN"/framework-arduinoespressif32"
@@ -125,12 +125,12 @@ if [ ! $NdR ]; then
   echo -e "OUT_PIO:         "$(shortFP $OUT_PIO)
   echo -e "OUT_PIO_Release: "$(shortFP $OUT_PIO_Release)
 fi
-# echo "ArduionoCOMPS: $ArduionoCOMPS"
+echo "....................................................................................."
 
-#--------------------------------------------- 
-# PIO modify .../tools//platformio-build.py 
-#---------------------------------------------
-echo -e " ...correct 'platformio-build.py' of {target}s"
+#------------------------------------------------ 
+# Correct .../tools/{target}/platformio-build.py 
+#------------------------------------------------
+echo -e " ...Correct 'platformio-build.py' of {target}s"
 # Code block that is wrong and needs to be replaced 
 searchBlock=$(cat <<EOL
 FRAMEWORK_DIR = env.PioPlatform().get_package_dir("framework-arduinoespressif32")
