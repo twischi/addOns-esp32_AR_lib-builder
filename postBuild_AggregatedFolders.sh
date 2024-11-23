@@ -11,6 +11,17 @@
 # 2) Set OWN arduino-esp32-BUILD Output Folder location
 # -------------------------------------------------
 
+#---------------------------------------------------------
+# FOR DEBUG ONLY
+# Check if the script is running with bashdb (debug mode)
+#---------------------------------------------------------
+if [[ -n "$_Dbg_file" ]]; then
+  echo "Running in debug mode"
+  cd ../esp32-arduino-lib-builder
+else
+  echo "NORMAL runnig mode" 
+fi
+
 #---------------------------------------
 # Define the colors for the echo output
 #---------------------------------------
