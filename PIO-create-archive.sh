@@ -31,12 +31,17 @@ echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # --------------------------------------------------
 # Get many essential infomations and set variables
 # --------------------------------------------------
-# ... Base Folder Structure
+# ..........................
+#   Base Folder Structure
+# ..........................
 LIB_BUILD=$(realpath "$(pwd)")         # Root-Folder of Lib-builder
 oneUpDir=$(realpath "$(pwd)"/../)      # DIR above the Lib-builder
-ADD_ON_PATH=$oneUpDir/addOns-esp32_AR_lib-builder 
-# ... Load the varialbes and functions for pretty output
-source $ADD_ON_PATH/myToolsEnhancements.sh
+echo "oneUpDir: "    $oneUpDir
+echo LIB_BUILD:      $LIB_BUILD
+# ......................................................
+#   Load the varialbes and functions for pretty output
+# .....................................................-
+source $oneUpDir/addOns-esp32_AR_lib-builder//myToolsEnhancements.sh
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 # Read (YOUR) configuration: Gets userGH & tokenGH, needed for GitHub authentication
 source $ADD_ON_PATH/config/config.sh # Used for API calls
@@ -46,15 +51,20 @@ echo -e LIB_BUILD:      $(shortFP $LIB_BUILD)
 PIO_Out_DIR=$oneUpDir/PIO-Out 
 echo -n PIO_Out_DIR: $PIO_Out_DIR && [ -d "$PIO_Out_DIR" ] && echo " (FOUND)" || echo " (CREATED)"
 [ $NdR ] && mkdir -p "$PIO_Out_DIR" # Make sure Folder exists
-
-#... AR_OUT = Folder with the build output
+# .........................................
+#  AR_OUT = Folder with the build output
+# .........................................
 AR_OUT=$(realpath "$(pwd)"/out)         # Folder with the build output
 echo -n AR_OUT: $AR_OUT  && [ -d "$AR_OUT" ] && echo " (FOUND)" || echo " (NOT FOUND)"
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-#... Folder to arduino-esp32 -Components // https://github.com/espressif/arduino-esp32
+# .........................................
+#  Folder to arduino-esp32 -Components // https://github.com/espressif/arduino-esp32
+# .........................................
 AR_PATH=$(realpath "$(pwd)"/components/arduino)  # Folder with Arduino-Components
 echo -e "AR_PATH:    "$(shortFP $AR_PATH)
-#... Repositories (from remote urls)
+# ...................................
+#  Repositories (from remote urls)
+# ...................................
 AR_REPO=$(git -C $AR_PATH remote get-url origin | sed -E 's#https?://[^/]+/([^/]+/[^.]+)\.git#\1#')
 echo "AR_REPO:    "$AR_REPO
 AR_BRANCH=$(git -C "$AR_PATH" branch --show-current --quiet)
@@ -67,12 +77,14 @@ AR_API="https://api.github.com/repos/"$AR_REPO"/releases/tags/"$AR_Tag_closest
 AR_VERSION=$(jq -c '.version' "$AR_PATH/package.json" | tr -d '"')     # Version of the 'arduino-esp32'
 echo "AR_VERSION: "$AR_VERSION
 echo "....................................................................................."
-
-#... Folder to the IDF-Components  // https://github.com/espressif/esp-idf
+# ...............................
+#  Folder to the IDF-Components  // https://github.com/espressif/esp-idf
+# ...............................
 IDF_PATH=$(realpath "$(pwd)"/esp-idf) # Folder with the IDF-Components
 echo -e "IDF_PATH:   "$(shortFP $IDF_PATH)
-
-#... Repositories (from remote urls)
+# ...................................
+#  Repositories (from remote urls)
+# ..................................
 IDF_REPO=$(git -C $IDF_PATH remote get-url origin | sed -E 's#https?://[^/]+/([^/]+/[^.]+)\.git#\1#')
 echo "IDF_REPO:   "$IDF_REPO
 #IDF_BRANCH=$(git -C "$IDF_PATH" branch --show-current --quiet)
@@ -90,19 +102,22 @@ echo "IDF_DL_FN:  "$IDF_DL_NAME
 IDF_DL_TAG=$(curl -su $userGH:$tokenGH $IDF_API | jq -r '.tag_name') 
 #echo "IDF_TAG: "$IDF_DL_TAG
 echo "....................................................................................."
-
-#... Branch of Lib-Builder
+# .........................
+#  Branch of Lib-Builder
+# .........................
 LB_BRANCH=$(git rev-parse --abbrev-ref HEAD) # Get current branch of used esp32-arduiono-lib-builder
 echo "LB_BRANCH:  "$LB_BRANCH "(esp32-arduino-lib-builder)"
-
-#... Versions of the used components
+# ..................................
+#  Versions of the used components
+# ..................................
 echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 pioIDF_verStr="IDF_$IDF_DL_TAG"
 echo "pioIDF_verStr: $pioIDF_verStr"
 pioAR_verStr="AR_$AR_VERSION"
 echo "pioAR_verStr:  $pioAR_verStr"
-
-#... Create list of targets used for the build
+# ............................................
+#  Create list of targets used for the build
+# ............................................
 searchFolder="$AR_OUT"/tools/esp32-arduino-libs # Folder with the build output
 TargetsHyphenSep=""                             # For hyphen separated list of targets, one line!
 for dir in "$searchFolder"/*/; do                           # Loop to Subfolers
@@ -112,8 +127,10 @@ for dir in "$searchFolder"/*/; do                           # Loop to Subfolers
     fi
 done
 echo "4Targets=      "$TargetsHyphenSep
-
-# Folder Name for this release                   (e.g. 2024-11-15_IDF_v5.3.1-AR_3.1.0_esp32h2)
+echo "....................................................................................."
+# ...............................
+#  Folder Name for this release                   (e.g. 2024-11-15_IDF_v5.3.1-AR_3.1.0_esp32h2)
+# ...............................
 releaseMainFN=$(date +"%Y-%m-%d")"_"$pioIDF_verStr"-"$pioAR_verStr"_"$TargetsHyphenSep
 PIO_frmwkDIR=$PIO_Out_DIR"/"$releaseMainFN"/framework-arduinoespressif32"
 #echo "PIO_frmwkDIR: $PIO_frmwkDIR" && exit  
